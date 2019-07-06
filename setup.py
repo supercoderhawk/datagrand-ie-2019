@@ -23,7 +23,7 @@ setup(
     name='datagrand_ie_2019',
     version=VERSION,
     description='datagrand_ie_2019',
-    url="http://git.patsnap.com/research/datagrand_ie_2019",
+    url="https://github.com/supercoderhawk/datagrand-ie-2019",
     long_description=README,
     author='yubin.xia',
     author_email='xiayubin@patsnap.com',
