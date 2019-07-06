@@ -16,13 +16,11 @@ class CRFTagger(object):
                  model_name,
                  model_folder=MODEL_DIR,
                  label_schema=SEQ_BILOU,
-                 is_load_model=False,
-                 feature_sets=None):
+                 is_load_model=False):
         self.model_path = os.path.join(model_folder, model_name + '.jl')
         self.label_schema = label_schema
         if is_load_model:
             self.__load_model()
-        self.feature_sets = feature_sets if feature_sets else []
 
     def __load_model(self):
         if not os.path.exists(self.model_path):
@@ -30,11 +28,6 @@ class CRFTagger(object):
         self.model = joblib.load(self.model_path)
 
     def train(self, src_filename, max_iter=200):
-        if self.feature_sets:
-            if type(self.feature_sets) not in {list, tuple}:
-                raise TypeError('feature sets must be list or tuple')
-            CRFFeature.feature_sets = self.feature_sets
-
         data_loader = CRFDataLoader(src_filename)
         sents = data_loader.load_data()
         labels = [sent['labels'] for sent in sents]

@@ -10,15 +10,12 @@ from datagrand_ie_2019.postprocess import Postprocessor
 
 
 class CRFExperiment(object):
-    def __init__(self, model_name, feature_sets=None, remark=''):
+    def __init__(self, model_name, remark=''):
         if remark and not remark.startswith(('-', '_')):
             remark = '_' + remark
         self.remark = remark
-        if feature_sets is None:
-            feature_sets = []
-        self.feature_sets = feature_sets
         self.basename = model_name + remark
-        self.tagger = CRFTagger(self.basename, feature_sets=feature_sets)
+        self.tagger = CRFTagger(self.basename)
         self.test_evaluator = EntityEvaluator(DATA_DIR + 'pre_data/test.json')
 
     def train(self, filename=TRAINING_FILE):

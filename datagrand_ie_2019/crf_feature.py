@@ -4,8 +4,6 @@ from .utils.constant import *
 
 
 class CRFFeature(object):
-    feature_sets = []
-
     def __init__(self, tokens):
         self.tokens = tokens
         self.token_texts = [token['text'] for token in tokens]
@@ -38,11 +36,7 @@ class CRFFeature(object):
         if 2 < idx < self.length - 2:
             all_features[FIVEGRAM_MID] = ' '.join(self.token_texts[idx - 2:idx + 3])
 
-        if self.feature_sets:
-            features = {feat: feat_val for feat, feat_val in all_features.items() if feat in self.feature_sets}
-        else:
-            features = all_features
-        return features
+        return all_features
 
     def sent2feature(self):
         return (self.word2feature(i) for i in range(self.length))
