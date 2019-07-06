@@ -17,3 +17,11 @@
 
 #### online
 0.859769444039107 
+
+### conclusion
+1. training data distribution seems unbiased
+2. distribution of test data and training data seems different
+3. CRF meets its upper bound
+4. next step is NN based method, and MUST use pretrained LM such as ELMo
+
+ 
