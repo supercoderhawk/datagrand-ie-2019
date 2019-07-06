@@ -1,0 +1,22 @@
+[[source]]
+name = "pypi"
+url = "https://pypi.org/simple"
+verify_ssl = true
+
+[dev-packages]
+
+[packages]
+pytest = "==4.4.1"
+pysenal = "==0.0.2"
+sklearn-crfsuite = "==0.3.6"
+modelhub = "==3.0.3"
+pandas = "==0.24.2"
+intervaltree = "==3.0.2"
+joblib = "==0.13.2"
+jupyter = "*"
+spacy = "==2.1.4"
+en-core-web-sm = "==2.1.0"
+PyYAML = "==5.1.1"
+
+[requires]
+python_version = "3.6"

@@ -1,0 +1,14 @@
+pytest==4.4.1
+pysenal==0.0.2
+sklearn_crfsuite==0.3.6
+modelhub==3.0.3
+pandas==0.24.2
+intervaltree==3.0.2
+setuptools==41.0.0
+joblib==0.13.2
+PyYAML==5.1.1
+jupyter
+spacy==2.1.4
+en_core_web_sm==2.1.0
+matplotlib
+seaborn

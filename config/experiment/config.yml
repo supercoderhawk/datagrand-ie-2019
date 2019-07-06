@@ -1,0 +1,7 @@
+training_file: "training.json"
+validation_file: "validation.json"
+validation_oov_file: "validation_oov.json"
+test_file: "test.json"
+test_oov_file: "test_oov.json"
+postprocess: false
+experiment: true
