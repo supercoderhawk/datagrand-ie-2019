@@ -1,5 +1,5 @@
 # -*- coding: UTF-8 -*-
-from .utils.constant import LOSS_LOG_LIKELIHOOD, NNCRF_DROPOUT_EMBEDDING
+from .utils.constant import LOSS_LOG_LIKELIHOOD, NNCRF_DROPOUT_EMBEDDING, SEQ_BILOU, ENTITY_TYPES
 
 
 class NeuralNetworkCRFConfig(object):
@@ -18,7 +18,8 @@ class NeuralNetworkCRFConfig(object):
                  dict_path: str = '',
                  model_name: str = '',
                  training_filename: str = '',
-                 label_schema: str = 'BIES',
+                 label_schema: str = SEQ_BILOU,
+                 entity_types: list = ENTITY_TYPES,
                  loss_function_name: str = LOSS_LOG_LIKELIHOOD):
         self.__skip_left = skip_left
         self.__skip_right = skip_right
@@ -35,6 +36,7 @@ class NeuralNetworkCRFConfig(object):
         self.__model_name = model_name
         self.__training_filename = training_filename
         self.__label_schema = label_schema
+        self.__entity_types = entity_types
         self.__loss_function_name = loss_function_name
 
     @property
@@ -106,8 +108,9 @@ class NeuralNetworkCRFConfig(object):
         return self.__label_schema
 
     @property
-    def tag_count(self):
-        return len(self.__label_schema)
+    def entity_types(self):
+        return self.__entity_types
+
 
     @property
     def loss_function_name(self):
