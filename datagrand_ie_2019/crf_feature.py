@@ -1,6 +1,5 @@
 # -*- coding: UTF-8 -*-
 """encapsulate CRF features"""
-from .utils.constant import *
 
 
 class CRFFeature(object):
@@ -11,30 +10,36 @@ class CRFFeature(object):
 
     def word2feature(self, idx):
         all_features = {
-            UNIGRAM: self.token_texts[idx]
+            'UNIGRAM': self.token_texts[idx]
         }
         if idx:
-            all_features[BIGRAM] = ' '.join(self.token_texts[idx - 1:idx + 1])
-            all_features[UNIGRAM_PREV_1] = self.token_texts[idx - 1]
+            all_features['BIGRAM'] = ' '.join(self.token_texts[idx - 1:idx + 1])
+            all_features['UNIGRAM:-1'] = self.token_texts[idx - 1]
+
         if idx > 1:
-            all_features[TRIGRAM] = ' '.join(self.token_texts[idx - 2:idx + 1])
+            all_features['TRIGRAM'] = ' '.join(self.token_texts[idx - 2:idx + 1])
+            all_features['BIGRAM:-2/-1'] = ' '.join(self.token_texts[idx - 3:idx])
         if idx > 2:
-            all_features[FOURGRAM] = ' '.join(self.token_texts[idx - 3:idx + 1])
+            all_features['FOURGRAM'] = ' '.join(self.token_texts[idx - 3:idx + 1])
         if idx > 3:
-            all_features[FIVEGRAM] = ' '.join(self.token_texts[idx - 4:idx + 1])
+            all_features['FIVEGRAM'] = ' '.join(self.token_texts[idx - 4:idx + 1])
 
         if idx < self.length - 1:
-            all_features[UNIGRAM_NEXT_1] = self.token_texts[idx + 1]
-            all_features[BIGRAM_NEXT] = ' '.join(self.token_texts[idx:idx + 2])
+            all_features['UNIGRAM:1'] = self.token_texts[idx + 1]
+            all_features['BIGRAM:0/1'] = ' '.join(self.token_texts[idx:idx + 2])
 
         if idx < self.length - 2:
-            all_features[TRIGRAM_NEXT] = self.token_texts[idx:idx + 3]
+            all_features['TRIGRAM:0/1/2'] = self.token_texts[idx:idx + 3]
+            all_features['context:1/2'] = self.token_texts[idx + 1:idx + 3]
 
         if 1 < idx < self.length - 1:
-            all_features[TRIGRAM_MID] = ' '.join(self.token_texts[idx - 1:idx + 2])
+            all_features['TRIGRAM:-1/0/1'] = ' '.join(self.token_texts[idx - 1:idx + 2])
+            all_features['context:-1/1'] = self.token_texts[idx - 1] + ' ' + self.token_texts[idx + 1]
 
         if 2 < idx < self.length - 2:
-            all_features[FIVEGRAM_MID] = ' '.join(self.token_texts[idx - 2:idx + 3])
+            all_features['FIVEGRAM:-2/-1/0/1/2'] = ' '.join(self.token_texts[idx - 2:idx + 3])
+            four_gram_mid = ' '.join(self.token_texts[idx - 2:idx] + self.token_texts[idx + 1:idx + 3])
+            all_features['context:-2/-1/1/2'] = four_gram_mid
 
         return all_features
 
