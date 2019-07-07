@@ -1,6 +1,5 @@
 # -*- coding: UTF-8 -*-
 import os
-from .experiment_config import ExperimentConfig
 
 __code_dir = os.path.join(os.path.dirname(os.path.realpath(__file__)), os.pardir)
 __base_dir = os.path.join(__code_dir, os.pardir)
@@ -22,13 +21,24 @@ RESULT_ERROR = 'error'
 RESULT_MORE = 'more'
 DEFAULT_COLOR = 'yellow'
 
-# experiment parameter
-EXP_CONFIG = ExperimentConfig()
-
 # type
 DEFAULT_TYPE = 'a'
 ENTITY_TYPES = ['a', 'b', 'c']
 
-# CoNLL tags
+# sequence label tag
 SEQ_BIO = 'BIO'
 SEQ_BILOU = 'BILOU'
+
+# neural vocab predefined tokens
+BATCH_PAD = '<PAD>'
+BOS = '<S>'
+EOS = '<E>'
+UNK = '<UNK>'
+
+# neural sequence labeling config
+FIT = 'fit'
+INFERENCE = 'inference'
+LOSS_LOG_LIKELIHOOD = 'log_likelihood'
+LOSS_MAX_MARGIN = 'max_margin'
+NNCRF_DROPOUT_EMBEDDING = 'dropout_embedding'
+NNCRF_DROPOUT_HIDDEN = 'dropout_hidden'
