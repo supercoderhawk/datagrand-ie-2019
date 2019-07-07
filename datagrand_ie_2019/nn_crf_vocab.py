@@ -1,15 +1,16 @@
 # -*- coding: utf-8 -*-
 from pysenal.io import read_lines
-from .utils.constant import BATCH_PAD, UNK, BOS, EOS
+from .utils.constant import BATCH_PAD, UNK, BOS, EOS, SEQ_BILOU
 
 
 class NeuralSeqVocab(object):
-    def __init__(self, *, dict_path, label_schema):
+    def __init__(self, *, dict_path, label_schema, entity_types):
         self.__dict_path = dict_path
         self.__dictionary = self.__load_dictionary()
         self.__dict_size = len(self.__dictionary)
 
         self.__label_schema = label_schema
+        self.__entity_types = entity_types
         self.__label_mapping = self.__get_label_mapping()
         self.__reversed_label_mapping = dict(zip(self.__label_mapping.values(), self.__label_mapping.keys()))
 
@@ -39,8 +40,16 @@ class NeuralSeqVocab(object):
 
     def __get_label_mapping(self):
         label_mapping = {}
-        for index, label in enumerate(self.__label_schema):
-            label_mapping[label] = index
+        if self.__label_schema == SEQ_BILOU:
+            index = 0
+            for label in SEQ_BILOU:
+                if label == 'O':
+                    continue
+                for e_type in self.__entity_types:
+                    label_mapping[label + '-' + e_type] = index
+                    index += 1
+        else:
+            raise ValueError('value error')
 
         return label_mapping
 
