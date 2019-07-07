@@ -18,7 +18,7 @@ class NeuralSeqVocab(object):
         dictionary = {}
 
         tokens = read_lines(self.__dict_path, skip_empty=True)
-        for idx, token in tokens:
+        for idx, token in enumerate(tokens):
             dictionary[token] = idx
         if BATCH_PAD not in dictionary:
             raise ValueError('PAD is not existed')
@@ -48,6 +48,7 @@ class NeuralSeqVocab(object):
                 for e_type in self.__entity_types:
                     label_mapping[label + '-' + e_type] = index
                     index += 1
+            label_mapping['O'] = index
         else:
             raise ValueError('value error')
 
