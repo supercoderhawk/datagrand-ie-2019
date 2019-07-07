@@ -7,10 +7,10 @@ from datagrand_ie_2019.pipeline import CrfNerPipeline
 class ResultRunner(object):
 
     def __init__(self):
-        self.crf_pipeline = CrfNerPipeline('baseline')
+        self.crf_pipeline = CrfNerPipeline('crf_context')
 
     def runner(self):
-        write_file(SUBMIT_DIR + 'baseline.txt', self.crf_runner())
+        write_file(SUBMIT_DIR + 'crf_context.txt', self.crf_runner())
 
     def crf_runner(self):
         test_data = read_json(TEST_FILE)

@@ -18,19 +18,32 @@ class CRFFeature(object):
 
         if idx > 1:
             all_features['TRIGRAM'] = ' '.join(self.token_texts[idx - 2:idx + 1])
-            all_features['BIGRAM:-2/-1'] = ' '.join(self.token_texts[idx - 3:idx])
+            all_features['context:-2/-1'] = ' '.join(self.token_texts[idx - 3:idx])
         if idx > 2:
             all_features['FOURGRAM'] = ' '.join(self.token_texts[idx - 3:idx + 1])
+            all_features['context:-3/-2/-1'] = ' '.join(self.token_texts[idx - 3:idx])
+            all_features['context:-3/-2'] = ' '.join(self.token_texts[idx - 3:idx - 1])
         if idx > 3:
             all_features['FIVEGRAM'] = ' '.join(self.token_texts[idx - 4:idx + 1])
+            all_features['context:-4/-3/-2/-1'] = ' '.join(self.token_texts[idx - 4:idx])
 
         if idx < self.length - 1:
             all_features['UNIGRAM:1'] = self.token_texts[idx + 1]
             all_features['BIGRAM:0/1'] = ' '.join(self.token_texts[idx:idx + 2])
 
         if idx < self.length - 2:
-            all_features['TRIGRAM:0/1/2'] = self.token_texts[idx:idx + 3]
-            all_features['context:1/2'] = self.token_texts[idx + 1:idx + 3]
+            all_features['TRIGRAM:0/1/2'] = ' '.join(self.token_texts[idx:idx + 3])
+            all_features['context:1/2'] = ' '.join(self.token_texts[idx + 1:idx + 3])
+
+        if idx < self.length - 3:
+            all_features['FOUR:NEXT'] = ' '.join(self.token_texts[idx:idx + 4])
+            all_features['context:1/2/3'] = ' '.join(self.token_texts[idx + 1:idx + 4])
+            all_features['context:2/3'] = ' '.join(self.token_texts[idx + 2:idx + 4])
+
+        if idx < self.length - 4:
+            all_features['FIVEGRAM:NEXT'] = ' '.join(self.token_texts[idx:idx + 5])
+            all_features['context:1/2/3/4'] = ' '.join(self.token_texts[idx + 1:idx + 5])
+            all_features['context:2/3/4'] = ' '.join(self.token_texts[idx + 2:idx + 5])
 
         if 1 < idx < self.length - 1:
             all_features['TRIGRAM:-1/0/1'] = ' '.join(self.token_texts[idx - 1:idx + 2])
