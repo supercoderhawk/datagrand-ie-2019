@@ -20,7 +20,8 @@ class NeuralNetworkCRFBase(object):
         self.__configuration_checker()
 
         self.vocab = NeuralSeqVocab(dict_path=self.config.dict_path,
-                                    label_schema=self.config.label_schema)
+                                    label_schema=self.config.label_schema,
+                                    entity_types=config.entity_types)
         self.dictionary = self.vocab.dictionary
         self.label_schema = self.config.label_schema
         self.label_mapping = self.vocab.label_mapping
