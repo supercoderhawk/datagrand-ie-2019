@@ -12,6 +12,50 @@ from .exception import LengthNotEqualException
 from ..data_process.label2entity import label2span
 
 
+class KFoldEntityEvaluator(object):
+    def __init__(self, k, true_filename, entity_types=ENTITY_TYPES):
+        self.k = k
+        self.__entity_types = entity_types
+        evaluators = []
+        true_data = read_json(true_filename)
+        if k != len(true_data):
+            raise ValueError('k and true data does not correspond.')
+        for single_fold_true_data in true_data:
+            evaluator = EntityEvaluator(single_fold_true_data, entity_types=entity_types)
+            evaluators.append(evaluator)
+        self.__evaluators = evaluators
+
+    def evaluate(self, pred_filename):
+        pred_data = read_json(pred_filename)
+        kfold_counter = {}
+        for i in range(self.k):
+            single_fold_pred_data = pred_data[i]
+            ret = self.__evaluators[i].evaluate(single_fold_pred_data, is_percentage=False)
+            for metrics, e_counter in ret.items():
+                for e_type, val in e_counter.items():
+                    kfold_counter[metrics + '-' + e_type][str(i)] = val
+        kfold_counter = pd.DataFrame(kfold_counter)
+        counter_sum = kfold_counter.sum(axis=1)
+        macro_row = {}
+        micro_row = {}
+        for e in self.__entity_types:
+            micro_precision = counter_sum['true_positive_count-' + e] / counter_sum['pred_count-' + e]
+            micro_recall = counter_sum['true_positive_count-' + e] / counter_sum['true_count-' + e]
+            micro_f1 = 2 * micro_precision * micro_recall / (micro_precision + micro_recall)
+            micro_row['precision-' + e] = micro_precision
+            micro_row['recall-' + e] = micro_recall
+            micro_row['f1-' + e] = micro_f1
+            macro_row['precision-' + e] = counter_sum['precision-' + e] / self.k
+            macro_row['recall-' + e] = counter_sum['recall-' + e] / self.k
+            macro_row['f1-' + e] = counter_sum['f1-' + e] / self.k
+        kfold_counter.append(macro_row)
+        kfold_counter.append(micro_row)
+        for e in self.__entity_types:
+            col_names = ['true_positive_count-' + e, 'pred_count-' + e]
+            kfold_counter.drop(col_names, axis='columns', inplace=True)
+        return kfold_counter
+
+
 class EntityEvaluator(object):
     def __init__(self, true_data, oov_true_data=None, entity_types=ENTITY_TYPES):
         self.true_data = self.__get_data(true_data)
@@ -23,9 +67,9 @@ class EntityEvaluator(object):
         if is_percentage:
             decimal += 2
         pred_data = self.__get_data(pred_data)
-        counter = self.__evaluate_data(pred_data, decimal)
+        counter = self.evaluate_data(pred_data, decimal)
         if self.is_evaluate_oov:
-            oov_counter = self.__evaluate_data(pred_data, decimal)
+            oov_counter = self.evaluate_data(pred_data, decimal)
             counter.insert(3, 'oov_rate', oov_counter['recall'])
             counter['oov_count'] = oov_counter['true_count']
         if not is_count:
@@ -37,7 +81,8 @@ class EntityEvaluator(object):
             self.to_percentage(counter, decimal - 2)
         return counter
 
-    def __evaluate_data(self, pred_data, decimal):
+    def evaluate_data(self, pred_data, decimal, return_dataframe=True):
+        self.__check_data(pred_data)
         counter = {}
         typed_pred_data = aggregate_entities_in_sents_by_type(pred_data, self.entity_types)
         typed_true_data = aggregate_entities_in_sents_by_type(self.true_data, self.entity_types)
@@ -47,8 +92,8 @@ class EntityEvaluator(object):
             for k, v in item.items():
                 counter.setdefault(k, {})
                 counter[k][entity_type] = v
-
-        counter = pd.DataFrame(counter).round(decimal)
+        if return_dataframe:
+            counter = pd.DataFrame(counter).round(decimal)
         return counter
 
     def __evaluate_single_type(self, entity_type, pred_data, true_data):
@@ -119,10 +164,10 @@ class EntityEvaluator(object):
         msg_tmpl = 'evaluation data error. {} is not equal to {}'
 
         for pred_sent, true_sent in zip(pred_data, self.true_data):
-            pred_text = pred_sent['text']
-            true_text = true_sent['text']
-            if pred_text != true_text:
-                raise ValueError(msg_tmpl.format(pred_text, true_text))
+            pred_tokens = pred_sent['tokens']
+            true_tokens = true_sent['tokens']
+            if pred_tokens != true_tokens:
+                raise ValueError(msg_tmpl.format(pred_tokens, true_tokens))
 
 
 class LabelEvaluator(object):
