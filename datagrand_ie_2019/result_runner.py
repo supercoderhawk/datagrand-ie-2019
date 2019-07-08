@@ -2,6 +2,7 @@
 from pysenal.io import *
 from datagrand_ie_2019.utils.constant import *
 from datagrand_ie_2019.pipeline import CrfNerPipeline
+from datagrand_ie_2019.experiment import NeuralExperiment
 
 
 class ResultRunner(object):
@@ -10,7 +11,8 @@ class ResultRunner(object):
         self.crf_pipeline = CrfNerPipeline('crf_context')
 
     def runner(self):
-        write_file(SUBMIT_DIR + 'crf_context.txt', self.crf_runner())
+        write_file(SUBMIT_DIR + 'nn_baseline.txt', self.nn_runner())
+        # write_file(SUBMIT_DIR + 'crf_context.txt', self.crf_runner())
 
     def crf_runner(self):
         test_data = read_json(TEST_FILE)
@@ -18,6 +20,12 @@ class ResultRunner(object):
             entities = self.crf_pipeline.run(sent['tokens'])
             sent['entities'] = entities
         return self.convert_result(test_data)
+
+    def nn_runner(self):
+        dest_filename = EVALUATION_DIR + 'nn_baseline.json'
+        NeuralExperiment().inference(MODEL_DIR + 'nn/test', TEST_FILE, dest_filename)
+
+        return self.convert_result(read_json(dest_filename))
 
     @classmethod
     def convert_result(cls, data):
@@ -30,7 +38,7 @@ class ResultRunner(object):
     @classmethod
     def convert_sent(cls, sent):
         tokens = sent['tokens']
-        token_texts = [t['text'] for t in tokens]
+        token_texts = [t['text'] if isinstance(t, dict) else t for t in tokens]
         entities = sorted(sent['entities'], key=lambda e: e['start'])
 
         segments = []
