@@ -6,13 +6,14 @@ import numpy as np
 import tensorflow as tf
 from .nn_crf_config import NeuralNetworkCRFConfig
 from .utils.constant import (FIT, INFERENCE, LOSS_LOG_LIKELIHOOD, LOSS_MAX_MARGIN,
-                             NNCRF_DROPOUT_EMBEDDING, NNCRF_DROPOUT_HIDDEN)
+                             NNCRF_DROPOUT_EMBEDDING, NNCRF_DROPOUT_HIDDEN, MODEL_DIR)
 from .nn_crf_base import NeuralNetworkCRFBase
 
 
 class NeuralNetworkCRF(NeuralNetworkCRFBase):
-    def __init__(self, mode, config: NeuralNetworkCRFConfig, label2result):
+    def __init__(self, mode, dest_dir, config: NeuralNetworkCRFConfig, label2result):
         super().__init__(mode=mode, config=config)
+        self.dest_dir = dest_dir
         self.label2result = label2result
         self.params = {}
         self.build_network()
@@ -44,14 +45,19 @@ class NeuralNetworkCRF(NeuralNetworkCRFBase):
                     self.loss = self.get_max_margin_loss()
                 else:
                     raise Exception('loss function is not supported.')
-                # self.loss += self.regularization
-                self.optimizer = tf.train.GradientDescentOptimizer(self.config.learning_rate)
+                self.loss += self.regularization
+                self.optimizer = tf.train.AdamOptimizer(self.config.learning_rate)
+                # self.optimizer = tf.train.GradientDescentOptimizer(self.config.learning_rate)
                 # self.optimizer = tf.train.AdagradOptimizer(self.config.learning_rate)
-                self.train_model = self.optimizer.minimize(self.loss + self.regularization)
-
-            self.sess.run(tf.global_variables_initializer())
-            if self.mode == INFERENCE:
-                tf.train.Saver().restore(save_path=self.config.model_name, sess=self.sess)
+                self.train_model = self.optimizer.minimize(self.loss)
+                self.sess.run(tf.global_variables_initializer())
+                # self.loss_summary = tf.summary.scalar('loss', self.loss)
+            elif self.mode == INFERENCE:
+                self.sess.run(tf.global_variables_initializer())
+                filename = MODEL_DIR + 'nn/' + self.config.model_name + '.ckpt'
+                # print(self.config.hidden_layers)
+                # print(filename)
+                tf.train.Saver().restore(self.sess, filename)
 
     def fit(self):
         print('start traininig......')
@@ -64,45 +70,53 @@ class NeuralNetworkCRF(NeuralNetworkCRFBase):
             else:
                 raise Exception('loss function is not supported.')
 
-    def inference(self, data, return_labels=False):
+    def inference(self, data):
         if type(data) not in {str, list}:
             raise Exception('Input data type error, not string or list')
-        elif isinstance(data, list):
-            for s in data:
-                if not isinstance(s, str):
-                    raise Exception('list item is not string')
         elif isinstance(data, str):
             data = [data]
 
         sent_lengths = [len(sent) for sent in data]
-        input_indices = self.sentences2input_indices(data, max(sent_lengths))
-        runner = [self.output, self.transition, self.init_transition]
-        feed_dict = {self.input_word_ids: input_indices, self.seq_length: sent_lengths}
-        output, transition, init_transition = self.sess.run(runner, feed_dict=feed_dict)
+        sent_tokens = [[t['text'] for t in sent['tokens']] for sent in data]
+        input_indices = self.sentences2input_indices(sent_tokens, max(sent_lengths))
+        runner = [self.output, self.transition]  # , self.init_transition]
+        outputs = []
+        transitions = None
+        for idx, lens in zip(input_indices, sent_lengths):
+            # feed_dict = {self.input_word_ids: input_indices, self.seq_length: np.array(sent_lengths)}
+            feed_dict = {self.input_word_ids: np.expand_dims(idx, axis=0), self.seq_length: [lens]}
+            # feed_dict = {self.input_word_ids: input_indices, self.seq_length: [600]}
+            # output, transition, init_transition = self.sess.run(runner, feed_dict=feed_dict)
+            output, transition = self.sess.run(runner, feed_dict=feed_dict)
+            transitions = transition
+            outputs.append(output[0])
 
         results = []
-        for sent, sent_output in zip(data, output):
-            labels = self.viterbi(sent_output.T, transition, init_transition)
-            if not return_labels:
-                results.append(self.label2result(sent, labels, self.label_schema))
-            else:
-                results.append(labels)
-
+        for sent, sent_output in zip(data, outputs):
+            labels = self.viterbi(sent_output.T[:, :len(sent)], transitions)
+            entities = self.label2result(sent['tokens'], labels, self.label_schema)
+            sent['entities'] = entities
+            sent['labels'] = labels
+            results.append(sent)
         return results
 
     def fit_log_likehood(self, sess, interval=1):
         saver = tf.train.Saver(max_to_keep=100)
         training_data = self.data.mini_batch(self.config.batch_size)
-        for index, (words, labels, seq_lengths) in enumerate(training_data):
+        for index, (words, labels, seq_lengths) in enumerate(training_data, 1):
             if index % self.batch_count == 0:
                 epoch = index // self.batch_count
                 print('epoch {0}'.format(epoch))
                 if epoch > 0 and epoch % interval == 0:
-                    saver.save(sess, self.config.model_name.format(epoch))
+                    basename = self.dest_dir + self.config.model_name
+                    saver.save(sess, basename + '{}.ckpt'.format(epoch))
+                    self.config.to_json(basename + '{}.json'.format(epoch))
+                if epoch > 100:
+                    break
 
             feed_dict = {self.input_word_ids: words, self.true_labels: labels, self.seq_length: seq_lengths}
-            self.sess.run(self.train_model, feed_dict=feed_dict)
-            print(np.sum(sess.run(self.loss, feed_dict=feed_dict)))
+            _, loss = self.sess.run([self.train_model, self.loss], feed_dict=feed_dict)
+            print(loss)
 
     def get_log_likehood_loss(self):
         with tf.name_scope('log_likehood'):
@@ -110,7 +124,7 @@ class NeuralNetworkCRF(NeuralNetworkCRFBase):
                                                             self.true_labels,
                                                             self.seq_length,
                                                             self.transition)
-            return -crf_loss / self.config.batch_size
+            return -tf.math.reduce_sum(crf_loss) / self.config.batch_size
 
     def fit_max_margin(self, sess, interval=1):
         saver = tf.train.Saver(max_to_keep=100)
@@ -142,10 +156,10 @@ class NeuralNetworkCRF(NeuralNetworkCRFBase):
             transition_diff = sess.run(self.transition_difference, feed_dict=feed_dict)
             state_diff = sess.run(self.state_difference, feed_dict=feed_dict)
 
-            if index and index % 100 == 0:
+            if index and index % 10 == 0:
                 print('======================')
                 print('batch index {0}'.format(index // self.batch_count))
-                print('trainsition: ', np.sum(transition_diff) / self.config.batch_size)
+                print('transition: ', np.sum(transition_diff) / self.config.batch_size)
                 print('state difference: ', np.sum(state_diff) / self.config.batch_size)
                 print('loss: ', sess.run(self.loss, feed_dict=feed_dict))
 
@@ -192,7 +206,7 @@ class NeuralNetworkCRF(NeuralNetworkCRFBase):
         if self.mode == FIT:
             self.true_seq = tf.placeholder(tf.int32, [self.config.batch_size, self.config.batch_length])
             self.pred_seq = tf.placeholder(tf.int32, [self.config.batch_size, self.config.batch_length])
-            output_shape = [self.config.batch_size, self.config.batch_length, self.config.tag_count]
+            output_shape = [self.config.batch_size, self.config.batch_length, self.label_count]
             self.output_placeholder = tf.placeholder(tf.float32, output_shape)
 
     def init_crf_variable(self):
@@ -247,6 +261,8 @@ class NeuralNetworkCRF(NeuralNetworkCRFBase):
             return self.get_bidirectional_lstm_layer(layer, hidden_units)
         elif type_name == 'bidirectional_gru':
             return self.get_bidirectional_gru_layer(layer, hidden_units)
+        else:
+            raise ValueError('error type name')
 
     def get_mlp_layer(self, layer, hidden_units, name='mlp',
                       weight_name='hidden_weight', bias_name='hidden_bias'):
@@ -292,8 +308,8 @@ class NeuralNetworkCRF(NeuralNetworkCRFBase):
 
     def get_full_connected_layer(self, layer):
         hidden_units = self.config.hidden_layers[-1]['units']
-        output_weight = self.__get_variable([hidden_units, self.config.tag_count], 'output_weight')
-        output_bias = tf.Variable(tf.zeros([1, 1, self.config.tag_count]), 'output_bias')
+        output_weight = self.__get_variable([hidden_units, self.label_count], name='output_weight')
+        output_bias = tf.Variable(tf.zeros([1, 1, self.label_count]), name='output_bias')
         self.params['output_weight'] = output_weight
         self.params['output_bias'] = output_bias
         return tf.tensordot(layer, output_weight, [[2], [0]]) + output_bias
@@ -303,6 +319,6 @@ class NeuralNetworkCRF(NeuralNetworkCRFBase):
 
     def __get_variable(self, size, name):
         if name == 'embedding':
-            return tf.Variable(tf.random_uniform(size, -0.01, -0.01), name=name)
+            return tf.Variable(tf.random_uniform(size, -0.05, -0.05), name=name)
         else:
-            return tf.Variable(tf.truncated_normal(size, stddev=1.0 / math.sqrt(size[-1])), name=name)
+            return tf.Variable(tf.truncated_normal(size, stddev=5.0 / math.sqrt(size[-1])), name=name)
