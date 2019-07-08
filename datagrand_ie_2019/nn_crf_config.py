@@ -1,4 +1,5 @@
 # -*- coding: UTF-8 -*-
+from pysenal.io import read_json, write_json
 from .utils.constant import LOSS_LOG_LIKELIHOOD, NNCRF_DROPOUT_EMBEDDING, SEQ_BILOU, ENTITY_TYPES
 
 
@@ -20,7 +21,8 @@ class NeuralNetworkCRFConfig(object):
                  training_filename: str = '',
                  label_schema: str = SEQ_BILOU,
                  entity_types: list = ENTITY_TYPES,
-                 loss_function_name: str = LOSS_LOG_LIKELIHOOD):
+                 loss_function_name: str = LOSS_LOG_LIKELIHOOD,
+                 **kwargs):
         self.__skip_left = skip_left
         self.__skip_right = skip_right
         self.__word_embed_size = word_embed_size
@@ -115,3 +117,18 @@ class NeuralNetworkCRFConfig(object):
     @property
     def loss_function_name(self):
         return self.__loss_function_name
+
+    def to_json(self, dest_filename=None):
+        config = {}
+        for prop in dir(self):
+            if not prop.startswith('_'):
+                val = getattr(self, prop)
+                if not callable(val):
+                    config[prop] = val
+        if dest_filename is not None:
+            write_json(dest_filename, config)
+        return config
+
+    @classmethod
+    def from_json(cls, filename):
+        return cls(**read_json(filename))
