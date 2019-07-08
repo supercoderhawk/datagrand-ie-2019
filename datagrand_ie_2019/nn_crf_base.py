@@ -25,7 +25,7 @@ class NeuralNetworkCRFBase(object):
         self.dictionary = self.vocab.dictionary
         self.label_schema = self.config.label_schema
         self.label_mapping = self.vocab.label_mapping
-        self.label_count = len(self.label_mapping)
+        self.label_count = len(self.label_mapping) + 1
         self.reversed_label_mapping = self.vocab.reversed_label_mapping
         self.dict_size = self.vocab.dict_size
 
@@ -73,7 +73,8 @@ class NeuralNetworkCRFBase(object):
             seq.append(item)
 
         if len(seq) < padding_length:
-            extra_items = [[BATCH_PAD] * self.config.concat_window_size] * (padding_length - len(seq))
+            pad_char = self.dictionary[BATCH_PAD]
+            extra_items = [[pad_char] * self.config.concat_window_size] * (padding_length - len(seq))
             seq.extend(extra_items)
         return seq
 
