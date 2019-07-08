@@ -27,9 +27,12 @@ class CRFTagger(object):
             raise Exception('model doesn\'t exist!! at {0}'.format(self.model_path))
         self.model = joblib.load(self.model_path)
 
-    def train(self, src_filename, max_iter=200):
-        data_loader = CRFDataLoader(src_filename)
-        sents = data_loader.load_data()
+    def train(self, data, max_iter=200):
+        if isinstance(data, str):
+            data_loader = CRFDataLoader(data)
+            sents = data_loader.load_data()
+        else:
+            sents = data
         labels = [sent['labels'] for sent in sents]
         features = []
 
