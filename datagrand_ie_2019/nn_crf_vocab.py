@@ -41,7 +41,7 @@ class NeuralSeqVocab(object):
     def __get_label_mapping(self):
         label_mapping = {}
         if self.__label_schema == SEQ_BILOU:
-            index = 0
+            index = 1
             for label in SEQ_BILOU:
                 if label == 'O':
                     continue
