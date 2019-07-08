@@ -55,7 +55,17 @@ def split_data():
     write_json(DATA_DIR + 'pre_data/test.json', data[training_count:])
 
 
+def generate_nn_seq_vocab():
+    words = [BATCH_PAD, BOS, EOS, UNK]
+    for sent in read_json(TRAINING_FILE):
+        for token in sent['tokens']:
+            if token['text'] not in words:
+                words.append(token['text'])
+    write_lines(DATA_DIR + 'neural_vocab.txt', words)
+
+
 if __name__ == '__main__':
     # process_training_data(RAW_DATA_DIR + 'train.txt', DATA_DIR + 'training.json')
     # split_data()
-    process_test_data()
+    # process_test_data()
+    generate_nn_seq_vocab()
