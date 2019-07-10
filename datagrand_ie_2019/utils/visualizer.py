@@ -34,14 +34,9 @@ class NerVisualizer(object):
     __minor_sep = '------------------------------'
     __type_color_mapper = get_entity_type_color_mapper()
 
-    def __init__(self, true_data, *, true_file_suffix='validation', color_mapper=None):
-        if isinstance(true_data, str):
-            if true_data.endswith(('test_oov.json', 'test.json')):
-                true_file_suffix = 'test'
-            elif true_data.endswith(('validation_oov.json', 'validation.json')):
-                true_file_suffix = 'validation'
-        self.__true_file_suffix = true_file_suffix
+    def __init__(self, true_data, *, color_mapper=None, skip_empty=True):
         self.__true_data = self.__get_data(true_data)
+        self.__skip_empty = skip_empty
         if color_mapper:
             self.__type_color_mapper = color_mapper
 
@@ -54,44 +49,23 @@ class NerVisualizer(object):
             print(cls.__sep)
             print(visualize_spans(sent['text'], entities))
 
-    def compare_model(self, compared_model_name, base_model_name=None, mode=RESULT_ERROR,
-                      visualize_true_data=False, evaluation_dir=EVALUATION_DIR):
-        compared_filename = self.__get_filename_by_model_name(compared_model_name,
-                                                              self.__true_file_suffix,
-                                                              evaluation_dir)
-        if base_model_name:
-            base_filename = self.__get_filename_by_model_name(base_model_name,
-                                                              self.__true_file_suffix,
-                                                              evaluation_dir)
-        else:
-            base_filename = None
-
-        if mode == RESULT_MORE:
-            if not base_filename:
-                raise ValueError('mode **more** must assign base_model_name')
-            self.compare_sents_more(compared_filename, base_filename, visualize_true_data)
-        elif mode == RESULT_ERROR:
-            self.compare_sents_error(compared_filename, base_filename, visualize_true_data)
-        elif mode == RESULT_MISSING:
-            self.compare_sents_missing(compared_filename, base_filename, visualize_true_data)
-        else:
-            raise ValueError('invalid comparison mode')
-
     def compare_sents_more(self, compared_data, base_data, visualize_true_data=False):
         compared_data = self.__get_data(compared_data)
         base_data = self.__get_data(base_data)
         self.__check_input(compared_data, base_data)
         zipped_generator = zip(compared_data, self.__true_data, base_data)
         for compared_sent, true_sent, base_sent in zipped_generator:
-            text = compared_sent['text']
+            tokens = compared_sent['tokens']
             compared_entities = compared_sent['entities']
             true_entities = true_sent['entities']
             base_entities = base_sent['entities']
             more_entities = self.__compare_entity_more(compared_entities, true_entities, base_entities)
+            if self.__skip_empty and not more_entities:
+                continue
             if visualize_true_data:
-                self.__simple_visualization(text, more_entities, true_entities)
+                self.__simple_visualization(tokens, more_entities, true_entities)
             else:
-                self.__simple_visualization(text, more_entities)
+                self.__simple_visualization(tokens, more_entities)
 
     def compare_sents_missing(self, compared_data, base_data=None, visualize_true_data=False):
         compared_data = self.__get_data(compared_data)
@@ -101,16 +75,18 @@ class NerVisualizer(object):
             base_data = [{'entities': None}] * len(compared_data)
         zipped_items = zip(self.__true_data, compared_data, base_data)
         for true_sent, compared_sent, base_sent in zipped_items:
-            text = true_sent['text']
+            tokens = true_sent['tokens']
             true_entities = true_sent['entities']
             compared_entities = compared_sent['entities']
             base_entities = base_sent['entities']
             missing_entities = self.__compare_sent_missing(compared_entities,
                                                            true_entities, base_entities)
+            if self.__skip_empty and not missing_entities:
+                continue
             if visualize_true_data:
-                self.__simple_visualization(text, missing_entities, true_entities)
+                self.__simple_visualization(tokens, missing_entities, true_entities)
             else:
-                self.__simple_visualization(text, missing_entities)
+                self.__simple_visualization(tokens, missing_entities)
 
     def compare_sents_error(self, compared_data, base_data=None, visualize_true_data=False):
         compared_data = self.__get_data(compared_data)
@@ -120,16 +96,18 @@ class NerVisualizer(object):
             base_data = [{'entities': None}] * len(compared_data)
         zipped_items = zip(self.__true_data, compared_data, base_data)
         for true_sent, compared_sent, base_sent in zipped_items:
-            text = true_sent['text']
+            tokens = true_sent['tokens']
             true_entities = true_sent['entities']
             compared_entities = compared_sent['entities']
             base_entities = base_sent['entities']
             error_entities = self.__compare_sent_error(compared_entities,
                                                        true_entities, base_entities)
+            if self.__skip_empty and not error_entities:
+                continue
             if visualize_true_data:
-                self.__simple_visualization(text, error_entities, true_entities)
+                self.__simple_visualization(tokens, error_entities, true_entities)
             else:
-                self.__simple_visualization(text, error_entities)
+                self.__simple_visualization(tokens, error_entities)
 
     def __compare_entity_more(self, compared_entities, true_entities, base_entities):
         more_entity_set = EntitySet(compared_entities) - base_entities & true_entities
@@ -172,18 +150,19 @@ class NerVisualizer(object):
         if len(data) != len(self.__true_data):
             raise LengthNotEqualException('input length and true length is not equal')
         for true_sent, sent in zip(self.__true_data, data):
-            if true_sent['text'] != sent['text']:
+            if true_sent['tokens'] != sent['tokens']:
                 raise ValueError('true text and prediction text is not equal.')
 
-    def __simple_visualization(self, text, entities, true_entities=None):
+    def __simple_visualization(self, tokens, entities, true_entities=None):
         self.__map_color(entities, self.__type_color_mapper)
         print(self.__sep)
-        print(visualize_spans(text, entities))
+        print(visualize_token_spans(tokens, entities))
+
         if true_entities is not None:
             true_entities = copy.deepcopy(true_entities)
             self.__map_color(true_entities, self.__type_color_mapper)
             print(self.__minor_sep)
-            print(visualize_spans(text, true_entities))
+            print(visualize_token_spans(tokens, true_entities))
 
     @classmethod
     def __get_data(cls, data):
@@ -199,6 +178,31 @@ class NerVisualizer(object):
     @classmethod
     def __get_filename_by_model_name(cls, model_name, suffix, dirname):
         return os.path.join(dirname, model_name) + '_' + suffix + '.json'
+
+
+def visualize_token_spans(tokens, spans, default_color=DEFAULT_COLOR):
+    spans = merge_spans(copy.deepcopy(spans))
+    token_texts = [t['text'] for t in tokens]
+    if not spans:
+        return ' '.join(token_texts)
+    display_sentence = ''
+    last_end = 0
+    for span in spans:
+        start = span['start']
+        end = span['end']
+        color = span.get('color') or default_color
+
+        prefix = ' ' + ' '.join(token_texts[last_end:start])
+
+        if last_end < start:
+            prefix += ' '
+        hl_e = highlight(' '.join(token_texts[start:end]), color)
+        display_sentence += prefix + hl_e
+        last_end = end
+    if last_end != len(tokens):
+        display_sentence += ' ' + ' '.join(token_texts[last_end:])
+    display_sentence = display_sentence.strip()
+    return display_sentence
 
 
 def visualize_spans(text, spans, default_color=DEFAULT_COLOR):
