@@ -22,6 +22,7 @@ class NeuralNetworkCRFConfig(object):
                  label_schema: str = SEQ_BILOU,
                  entity_types: list = ENTITY_TYPES,
                  loss_function_name: str = LOSS_LOG_LIKELIHOOD,
+                 embed_path=None,
                  **kwargs):
         self.__skip_left = skip_left
         self.__skip_right = skip_right
@@ -40,6 +41,7 @@ class NeuralNetworkCRFConfig(object):
         self.__label_schema = label_schema
         self.__entity_types = entity_types
         self.__loss_function_name = loss_function_name
+        self.__embed_path = embed_path
 
     @property
     def skip_left(self):
@@ -117,6 +119,10 @@ class NeuralNetworkCRFConfig(object):
     @property
     def loss_function_name(self):
         return self.__loss_function_name
+
+    @property
+    def embed_path(self):
+        return self.__embed_path
 
     def to_json(self, dest_filename=None):
         config = {}

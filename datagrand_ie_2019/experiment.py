@@ -16,7 +16,6 @@ class CRFExperiment(object):
     def __init__(self, model_name):
         self.basename = model_name
         self.tagger = CRFTagger(self.basename)
-        self.test_evaluator = EntityEvaluator(DATA_DIR + 'pre_data/test.json')
 
     def train(self, filename=TRAINING_FILE):
         self.tagger.train(filename)
@@ -24,7 +23,7 @@ class CRFExperiment(object):
 
     def cross_validation(self, cv_basedir):
         test_dest_dir = cv_basedir + 'evaluation/'
-        training_data = read_json(cv_basedir + 'training.json')
+        training_data = read_json(cv_basedir + 'training_augmentation.json')
         test_data = read_json(cv_basedir + 'test.json')
         test_eval_data = []
         pred_filename = test_dest_dir + self.basename + '.json'
@@ -53,14 +52,14 @@ class CRFExperiment(object):
         result = self.inference_json(read_json(src_filename))
         write_json(dest_filename, result)
 
-    def evaluation(self):
+    def evaluation(self, test_true_filename):
         test_pred_filename = EVALUATION_DIR + self.basename + '_test.json'
-        test_true_filename = DATA_DIR + 'pre_data/test.json'
         self.inference_file(test_true_filename, test_pred_filename)
 
         print('=============')
         print('test result:')
-        test_counter = self.test_evaluator.evaluate(test_pred_filename)
+        test_evaluator = EntityEvaluator(test_true_filename)
+        test_counter = test_evaluator.evaluate(test_pred_filename)
         print(test_counter)
 
 

@@ -1,5 +1,8 @@
 # -*- coding: utf-8 -*-
+import numpy as np
 from pysenal.io import read_lines
+from glove import Glove
+from gensim.models import Word2Vec
 from .utils.constant import BATCH_PAD, UNK, BOS, EOS, SEQ_BILOU
 
 
@@ -29,6 +32,32 @@ class NeuralSeqVocab(object):
         if UNK not in dictionary:
             raise ValueError('UNK is not existed')
         return dictionary
+
+    def load_word2vec_embedding(self, filename):
+        model = Word2Vec.load(filename)
+        vectors = np.zeros([len(self.dictionary), 500])
+        for char, idx in self.__dictionary.items():
+            if idx < 4:
+                continue
+            vectors[idx] = model.wv[char]
+
+        return vectors
+
+    def load_glove_embedding(self, filename):
+        model = Glove.load(filename)
+        mapper = [0] * (len(self.dictionary) - 4)
+        for char, idx in model.dictionary.items():
+            if char not in self.dictionary:
+                continue
+            mapper[self.dictionary[char] - 4] = idx
+        vectors = model.word_vectors[mapper]
+        dim = len(vectors[0])
+        vectors = np.insert(vectors, 0, [[0] * dim] * 4, axis=0)
+        return vectors
+
+    def load_elmo(self, filename):
+
+        pass
 
     @property
     def dictionary(self):

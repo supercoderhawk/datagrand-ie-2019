@@ -8,11 +8,11 @@ from datagrand_ie_2019.experiment import NeuralExperiment
 class ResultRunner(object):
 
     def __init__(self):
-        self.crf_pipeline = CrfNerPipeline('crf_context')
+        self.crf_pipeline = CrfNerPipeline('crf_more_feature')
 
     def runner(self):
-        write_file(SUBMIT_DIR + 'nn_baseline.txt', self.nn_runner())
-        # write_file(SUBMIT_DIR + 'crf_context.txt', self.crf_runner())
+        write_file(SUBMIT_DIR + 'nn_baseline_v2.txt', self.nn_runner())
+        # write_file(SUBMIT_DIR + 'crf_more_feature.txt', self.crf_runner())
 
     def crf_runner(self):
         test_data = read_json(TEST_FILE)
@@ -22,8 +22,8 @@ class ResultRunner(object):
         return self.convert_result(test_data)
 
     def nn_runner(self):
-        dest_filename = EVALUATION_DIR + 'nn_baseline.json'
-        NeuralExperiment().inference(MODEL_DIR + 'nn/test', TEST_FILE, dest_filename)
+        dest_filename = EVALUATION_DIR + 'nn_baseline_new_train_submit.json'
+        NeuralExperiment().inference(MODEL_DIR + 'nn/nn_baseline_new_train', TEST_FILE, dest_filename)
 
         return self.convert_result(read_json(dest_filename))
 

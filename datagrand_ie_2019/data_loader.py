@@ -2,6 +2,7 @@
 """
 define training data loader class
 """
+import random
 import numpy as np
 from pysenal.io import read_json, read_jsonline
 from pysenal.utils.logger import get_logger
@@ -56,7 +57,13 @@ class NeuralSeqDataLoader(object):
         sents = []
         labels = []
         seq_lengths = []
-        for sent in read_json(self.__filename):
+        input_sents = read_json(self.__filename)
+        random.shuffle(input_sents)
+        random.shuffle(input_sents)
+        random.shuffle(input_sents)
+        random.shuffle(input_sents)
+        random.shuffle(input_sents)
+        for sent in input_sents:
             sent_words = [t['text'] for t in sent['tokens']]
             sent_labels = sent['labels']
             mapped_words = [self.__word2id_mapper[word] for word in sent_words]
@@ -94,11 +101,27 @@ class NeuralSeqDataLoader(object):
         else:
             s1 = slice(self.__offset, self.__sent_count)
             s2 = slice(0, self.__offset + batch_size - self.__sent_count)
-            sents = np.concatenate((self.__sents[s1], self.__sents[s2]))
-            labels = np.concatenate((self.__labels[s1], self.__labels[s2]))
-            seq_lengths = np.concatenate((self.__seq_lengths[s1], self.__seq_lengths[s2]))
+            prefix_sents = self.__sents[s1]
+            prefix_labels = self.__labels[s1]
+            prefix_lengths = self.__seq_lengths[s1]
+            self.__shuffle_data()
+            sents = np.concatenate((prefix_sents, self.__sents[s2]))
+            labels = np.concatenate((prefix_labels, self.__labels[s2]))
+            seq_lengths = np.concatenate((prefix_lengths, self.__seq_lengths[s2]))
             self.__offset += batch_size - self.__sent_count
             return sents, labels, seq_lengths
+
+    def __shuffle_data(self):
+        new_indices = list(range(self.__sent_count))
+        random.shuffle(new_indices)
+        random.shuffle(new_indices)
+        random.shuffle(new_indices)
+        random.shuffle(new_indices)
+        random.shuffle(new_indices)
+
+        self.__sents = self.__sents[new_indices]
+        self.__labels = self.__labels[new_indices]
+        self.__seq_lengths = self.__seq_lengths[new_indices]
 
     def mini_batch(self, batch_size):
         while True:
